@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 trait weetQLController
 {
     public $requireFilter = null;
+    public $limit = [
+        'take' => 50,
+        'skip' => 0
+    ];
 	public function get(Request $request){
 
     }
@@ -26,6 +30,7 @@ trait weetQLController
             $oo = $gg->model;
             $class = 'App\\'.$oo;
             $class = new $class();
+            $originalClass = $class;
             if(isset($gg->backendFilter[0])){
             	for($aeo=0;$aeo<count($gg->backendFilter);$aeo++){
             		$class = $this->{$gg->backendFilter[$aeo]}($class);
@@ -46,10 +51,17 @@ trait weetQLController
                     }
                 }
             }else{
-                return response()->json([
-                    'status' => 'rejected',
-                    'message' => 'You cant use backendFilter and where Clause together'
-                ],500);
+                if(isset($gg->where[0])){
+                	return response()->json([
+                        'status' => 'rejected',
+                        'message' => 'You cant use backendFilter and where Clause together'
+                    ],500);
+                }
+            }
+            if(isset($gg->whereFilter[0])){
+                for($aeo=0;$aeo<count($gg->whereFilter);$aeo++){
+            		$class = $this->{$gg->whereFilter[$aeo]}($class,$gg,$request);
+            	}
             }
             if(isset($gg->validator[0])){
                 for($aio=0;$aio<count($gg->validator);$aio++){
@@ -80,11 +92,42 @@ trait weetQLController
                     }
                 break;
                 case 'all':
-                    if(isset($gg->column[0])){
-                        $class = $class->get($gg->column);
+                    // limit row access
+                    if(isset($originalClass->limit['max_row'])){
+                        if($gg->take > 0){
+                            if($originalClass->limit['max_row'] < $gg->take){
+                                return response()->json([
+                                    'status' => 'rejected',
+                                    'message' => 'The row cant more than max row = '.$class->limit['max_row']
+                                ],500);
+                            }else{
+                                if(isset($gg->column[0])){
+                                    $class = $class->take($gg->take)->skip($gg->skip)->get($gg->column);
+                                }else{
+                                    $class = $class->take($gg->take)->skip($gg->skip)->get();
+                                }
+                            }
+                        }else{
+                            return response()->json([
+                                'status' => 'rejected',
+                                'message' => 'the row should be more than 0'
+                            ],500);
+                        }
                     }else{
-                        $class = $class->get();
+                        if($gg->take >= 0){
+                            return response()->json([
+                                'status' => 'rejected',
+                                'message' => 'Please define limiter at your model'
+                            ],500);
+                        }else{
+                            if(isset($gg->column[0])){
+                                $class = $class->take($this->limit['take'])->skip($this->limit['skip'])->get($gg->column);
+                            }else{
+                                $class = $class->take($this->limit['take'])->skip($this->limit['skip'])->get();
+                            }
+                        }
                     }
+                    
                 break;
             }
             if(isset($gg->field)){
