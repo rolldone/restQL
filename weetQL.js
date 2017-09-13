@@ -1,4 +1,8 @@
 define(function(require){
+	let {
+		restQL,
+		getRestApiService
+	} = require('./httpServices.js');
 	let gg = function(){
 		let theJSON = function(){
 			// ALL
@@ -10,7 +14,10 @@ define(function(require){
 			this.validator = [];
 			this.overrideProcess = null;
 			this.where = [];
+			this.whereFilter = [];
 			this.column = [];
+			this.take = 10;
+			this.skip = 0;
 			this.mode = 'single';
 			// laravel
 			this.with = [];
@@ -26,6 +33,8 @@ define(function(require){
 				this.overrideProcess = null;
 				this.validator = [];
 				this.mode = 'single';
+				this.take = 10;
+				this.skip = 0;
 				// laravel
 				this.with = [];
 			}
@@ -64,8 +73,13 @@ define(function(require){
 					field : key,
 					value : theObject[key]
 				});
+				
+				vm.newJSON.fieldCheck[key] = theObject[key];
 			}
 			// vm.newJSON.field.push(theObject);
+		}
+		this.setWhereFilter = function(theRuleName){
+			vm.newJSON.whereFilter.push(theRuleName);
 		}
 		this.where = function(field,operator,value){
 			vm.newJSON.where.push({
@@ -85,6 +99,13 @@ define(function(require){
 		}
 		this.setBackendFilter = function(func){
 			vm.newJSON.backendFilter.push(func);
+		}
+		this.setWith = function(withValue){
+			vm.newJSON.with.push(withValue);
+		}
+		this.setTakeAndSkip = function(take,skip){
+			vm.newJSON.take = take;
+			vm.newJSON.skip = skip;
 		}
 		this.get = function(){
 			vm.newJSON.action = 'get'; 
@@ -106,6 +127,16 @@ define(function(require){
 		}	
 		this.export = function(){
 			return JSON.stringify(vm.queryStore);
+		}
+		this.executing = function(param,callback){
+			console.log(param);
+			var pp = {
+				restQl : vm.export()
+			}
+			pp = Object.assign(pp,param);
+			getRestApiService(JSON.stringify(pp),restQL.any,function(data){
+				callback(data);
+			})
 		}
 		let vm = this;
 		return vm;
